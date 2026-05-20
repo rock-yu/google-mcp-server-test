@@ -15,6 +15,29 @@ content — all without you leaving your editor.
 
 ---
 
+## ⚠️ This is a locally-hosted MCP server — not a cloud-hosted one
+
+It's important to understand **where this MCP server runs**, because it affects security,
+performance, and how you'd productionise it.
+
+| | **This setup (local)** | **Cloud-hosted MCP** |
+|---|---|---|
+| **Where it runs** | On your own machine, spawned by VS Code | On a remote server (e.g. a container, cloud function) |
+| **Who starts it** | VS Code starts/stops it automatically per session | Always-on, accessed over HTTP/SSE |
+| **Credentials** | Stored locally on your machine | Managed by the hosting environment (secrets manager, etc.) |
+| **Network** | Communicates via stdin/stdout (no open port) | Exposed via HTTPS endpoint |
+| **Good for** | Local experimentation, personal use | Shared teams, production integrations |
+| **Latency** | Near-zero (local process) | Network round-trip |
+
+**For this experiment:** you are running the MCP server as a local Node.js process on your
+laptop. Your Google credentials never leave your machine. This is the simplest and safest way
+to explore MCP capabilities before committing to a cloud-hosted deployment.
+
+If you later want to share this with a team or run it in CI/CD, you would move the server to
+a hosted environment and switch from `stdio` transport to `http`/`sse` transport in the config.
+
+---
+
 ## How it works (big picture)
 
 ```
