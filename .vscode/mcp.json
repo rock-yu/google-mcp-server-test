@@ -1,0 +1,16 @@
+{
+  "servers": {
+    "gdrive": {
+      "type": "stdio",
+      "command": "node",
+      "args": [
+        "${workspaceFolder}/node_modules/@modelcontextprotocol/server-gdrive/dist/index.js"
+      ],
+      "env": {
+        "NODE_TLS_REJECT_UNAUTHORIZED": "0",
+        "GDRIVE_OAUTH_PATH": "${workspaceFolder}/gcp-oauth.keys.json",
+        "GDRIVE_CREDENTIALS_PATH": "${workspaceFolder}/node_modules/.gdrive-server-credentials.json"
+      }
+    }
+  }
+}
