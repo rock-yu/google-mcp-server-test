@@ -1,62 +1,139 @@
-# Google Drive MCP Server Setup Guide
+# Google Drive MCP Server — Experiment Setup Guide
 
-This guide walks you through setting up the `@modelcontextprotocol/server-gdrive` MCP server
-to access Google Drive (including Google Docs) from VS Code via GitHub Copilot.
+## What is this?
+
+This repo lets you experiment with connecting **GitHub Copilot in VS Code** directly to your
+**Google Drive** using the [Model Context Protocol (MCP)](https://modelcontextprotocol.io/).
+
+Once set up, you can ask Copilot things like:
+- *"Search my Google Drive for architecture documents"*
+- *"Read the contents of my meeting notes doc"*
+- *"What's in the spreadsheet called Q1 Budget?"*
+
+Copilot will call the MCP server, which talks to Google Drive on your behalf and returns the
+content — all without you leaving your editor.
+
+---
+
+## How it works (big picture)
+
+```
+VS Code (Copilot Chat)
+       │
+       │  speaks MCP protocol (stdio)
+       ▼
+@modelcontextprotocol/server-gdrive   ← local Node.js process
+       │
+       │  Google Drive API (OAuth 2.0)
+       ▼
+  Your Google Drive
+```
+
+The MCP server runs as a local background process. VS Code spawns it automatically when you open
+the project. Your credentials never leave your machine — they are stored locally and used to make
+API calls directly to Google.
 
 ---
 
 ## Prerequisites
 
-- Node.js installed (v18+)
-- VS Code with GitHub Copilot extension
-- A Google account
+Before you start, make sure you have:
+
+- **Node.js v18+** — the MCP server runs on Node (`node --version` to check)
+- **VS Code** with the **GitHub Copilot** extension installed and signed in
+- A **Google account** with some files in Google Drive to experiment with
 
 ---
 
-## Step 1: Project Setup
+## Step 1: Install the MCP Server Package
+
+**What you're doing:** Installing the Google Drive MCP server as a local Node.js dependency.
+This is the bridge between VS Code/Copilot and the Google Drive API.
 
 ```bash
-mkdir google-mcp-server-test
 cd google-mcp-server-test
-npm init -y
-npm install @modelcontextprotocol/server-gdrive
+npm install
 ```
 
-> **Corporate network tip:** If you get SSL certificate errors, first run:
+> **Why `npm install` and not `npm install @modelcontextprotocol/server-gdrive`?**
+> The package is already declared in `package.json` in this repo — `npm install` restores it.
+
+> **Corporate network tip:** If you get `UNABLE_TO_GET_ISSUER_CERT_LOCALLY` errors, your
+> network uses SSL inspection. Run this first, then retry:
 > ```bash
 > npm config set strict-ssl false
+> npm install
 > ```
-> Then re-run the `npm install` command.
 
 ---
 
-## Step 2: Google Cloud OAuth Credentials
+## Step 2: Create a Google Cloud OAuth App
+
+**What you're doing:** Registering a "Desktop App" in Google Cloud so the MCP server has
+permission to read your Google Drive on your behalf. Think of this as creating an API key
+with an identity that Google can trust.
+
+**Why is this needed?** Google Drive requires OAuth 2.0 — you can't just use a username/password.
+OAuth lets you grant limited, revocable access (read-only Drive in this case) without exposing
+your Google credentials to the app.
+
+### 2a — Create a Google Cloud Project
 
 1. Go to [https://console.cloud.google.com/](https://console.cloud.google.com/)
-2. **Create a new project** (or select an existing one)
-3. Navigate to **APIs & Services → Library**
-4. Search for **"Google Drive API"** and click **Enable**
-5. Go to **APIs & Services → OAuth consent screen**
-   - Choose **External** (or Internal if on Google Workspace)
-   - Fill in the app name and your email
-   - Under **Scopes**, add: `https://www.googleapis.com/auth/drive.readonly`
-   - Under **Test users**, click **"+ Add Users"** and add your Google email
-6. Go to **APIs & Services → Credentials**
-   - Click **"Create Credentials" → OAuth client ID**
-   - Application type: **Desktop app**
-   - Click **Create**
-7. Download the JSON file and rename it to `gcp-oauth.keys.json`
-8. Place it in your project root:
+2. Click the project dropdown at the top → **"New Project"**
+3. Give it any name (e.g. `google-drive-mcp-test`) and click **Create**
+
+### 2b — Enable the Google Drive API
+
+This tells Google that your project is allowed to make Drive API calls.
+
+1. Go to **APIs & Services → Library**
+2. Search for **"Google Drive API"** → click it → click **Enable**
+
+### 2c — Configure the OAuth Consent Screen
+
+This is the sign-in screen users see when granting access. For experiments, you only need
+a minimal setup.
+
+1. Go to **APIs & Services → OAuth consent screen**
+2. Choose **External** (allows any Google account; choose Internal if on Google Workspace)
+3. Fill in:
+   - **App name**: anything (e.g. `Google Drive MCP Test`)
+   - **User support email**: your email
+   - **Developer contact email**: your email
+4. Click **Save and Continue** through the Scopes screen (you'll add the scope next)
+5. On the **Test users** screen → click **"+ Add Users"** → enter your Google email → **Save**
+
+   > ⚠️ **This step is critical.** Until you publish the app (which requires Google review),
+   > only email addresses listed here can sign in. If you skip this, you'll get `Error 403: access_denied`.
+
+### 2d — Create OAuth Credentials
+
+This generates the client ID + secret the MCP server uses to identify itself to Google.
+
+1. Go to **APIs & Services → Credentials**
+2. Click **"Create Credentials" → OAuth client ID**
+3. Application type: **Desktop app**
+4. Click **Create**
+5. Click **"Download JSON"** on the confirmation dialog (or download it later from the credentials list)
+6. Rename the downloaded file to `gcp-oauth.keys.json`
+7. Place it in this project root:
    ```
    google-mcp-server-test/
    └── gcp-oauth.keys.json   ← here
    ```
 
+   > 🔒 This file contains your client secret. It is listed in `.gitignore` and must never be committed.
+
 ---
 
-## Step 3: Authenticate with Google
+## Step 3: Authenticate — Link Your Google Account
 
-Run the following command from your project root:
+**What you're doing:** Running a one-time auth flow that opens your browser, asks you to sign
+in with Google, and saves a token locally. After this step, the MCP server can make Drive API
+calls without asking you to sign in again.
+
+Run this from the project root:
 
 ```bash
 NODE_TLS_REJECT_UNAUTHORIZED=0 \
@@ -64,46 +141,48 @@ GDRIVE_OAUTH_PATH="$(pwd)/gcp-oauth.keys.json" \
 node node_modules/@modelcontextprotocol/server-gdrive/dist/index.js auth
 ```
 
-This will:
-1. Open a browser window with a Google sign-in page
-2. Show a warning: *"You've been given access to an app that's currently being tested"* — click **Continue**
-3. Ask you to grant Drive read permissions — click **Allow**
-4. Print: `Credentials saved. You can now run the server.`
+**What happens:**
+1. Your browser opens to a Google sign-in page
+2. You see: *"You've been given access to an app that's currently being tested"* — click **Continue**
+   (this is expected — your app is in test mode)
+3. Google asks you to grant **read-only Drive access** — click **Allow**
+4. The terminal prints: `Credentials saved. You can now run the server.`
 
-Credentials are saved to:
-```
-node_modules/.gdrive-server-credentials.json
-```
+A token file is now saved at `node_modules/.gdrive-server-credentials.json`. This is what
+the server uses on every subsequent run — you won't need to sign in again unless it expires.
 
-> **Corporate network tip:** The `NODE_TLS_REJECT_UNAUTHORIZED=0` flag is required on networks
-> with SSL inspection (e.g. corporate proxies). It disables TLS certificate validation for
-> local development only — do not use in production.
+> **Why `NODE_TLS_REJECT_UNAUTHORIZED=0`?** On networks with SSL inspection (corporate proxies),
+> the proxy intercepts HTTPS traffic with its own certificate, which Node.js rejects by default.
+> This flag disables that check for local development only. Do **not** use in production.
 
 ### Common auth errors
 
-| Error | Fix |
-|-------|-----|
-| `Error 403: access_denied` | Your Google account isn't added as a test user. Go to OAuth consent screen → Test users → add your email. |
-| `UNABLE_TO_GET_ISSUER_CERT_LOCALLY` | Corporate SSL proxy. Add `NODE_TLS_REJECT_UNAUTHORIZED=0` to your command. |
-| `"You've been given access to an app that's currently being tested"` | Not an error — just click **Continue**. |
+| Error | What it means | Fix |
+|-------|---------------|-----|
+| `Error 403: access_denied` | Your Google account isn't on the test users list | Go to OAuth consent screen → Test users → add your email |
+| `UNABLE_TO_GET_ISSUER_CERT_LOCALLY` | Corporate SSL proxy intercepting the token exchange | Add `NODE_TLS_REJECT_UNAUTHORIZED=0` to your command |
+| *"You've been given access to an app that's currently being tested"* | Normal warning for test-mode apps | Just click **Continue** — it's not an error |
 
 ---
 
-## Step 4: Configure VS Code
+## Step 4: Configure VS Code to Use the MCP Server
 
-Create the file `.vscode/mcp.json` in your project root with the following content:
+**What you're doing:** Telling VS Code how to start the MCP server when you open this project.
+The `.vscode/mcp.json` file is already in this repo — you don't need to create it.
+
+Open `.vscode/mcp.json` to understand what it does:
 
 ```json
 {
   "servers": {
     "gdrive": {
-      "type": "stdio",
-      "command": "node",
+      "type": "stdio",               // VS Code communicates with the server via stdin/stdout
+      "command": "node",             // runs the server as a Node.js process
       "args": [
         "${workspaceFolder}/node_modules/@modelcontextprotocol/server-gdrive/dist/index.js"
       ],
       "env": {
-        "NODE_TLS_REJECT_UNAUTHORIZED": "0",
+        "NODE_TLS_REJECT_UNAUTHORIZED": "0",          // handles corporate SSL proxies
         "GDRIVE_OAUTH_PATH": "${workspaceFolder}/gcp-oauth.keys.json",
         "GDRIVE_CREDENTIALS_PATH": "${workspaceFolder}/node_modules/.gdrive-server-credentials.json"
       }
@@ -112,46 +191,59 @@ Create the file `.vscode/mcp.json` in your project root with the following conte
 }
 ```
 
+VS Code reads this file automatically when you open the folder and starts the `gdrive` server
+in the background. No manual server startup needed.
+
 ---
 
-## Step 5: Use in VS Code
+## Step 5: Try It in VS Code
 
-1. Open the project folder in VS Code
-2. Open **GitHub Copilot Chat** in Agent mode
-3. Verify the server is running via **Command Palette** (`⌘⇧P` / `Ctrl⇧P`) → **"MCP: List Servers"**
-4. Try prompts like:
+**What you're doing:** Using GitHub Copilot Chat (in Agent mode) to query your Google Drive
+through the MCP server.
+
+1. Open this folder in VS Code: `code .`
+2. Verify the server registered: **Command Palette** (`⌘⇧P` / `Ctrl⇧P`) → **"MCP: List Servers"**
+   — you should see `gdrive` with a green status
+3. Open **GitHub Copilot Chat** → switch to **Agent mode** (the `@` icon or agent selector)
+4. Try these prompts:
    - *"Search my Google Drive for documents about architecture"*
    - *"List recent files in my Google Drive"*
-   - *"Read the contents of [document name] from my Drive"*
+   - *"Read the contents of [your document name] from my Drive"*
+
+Copilot will call the MCP server tool, which fetches from Drive and returns the content inline
+in the chat — no copy-pasting needed.
 
 ---
 
-## What the MCP server supports
+## What the MCP Server Can Do
 
-| Feature | Details |
-|---------|---------|
-| **Search** | Search files by name/content via `query` string |
-| **Read files** | Access via `gdrive:///<file_id>` |
-| **Google Docs** | Auto-exported as Markdown |
-| **Google Sheets** | Auto-exported as CSV |
-| **Google Slides** | Auto-exported as plain text |
-| **Google Drawings** | Auto-exported as PNG |
-| **Other files** | Returned in native format |
+| Capability | How it works |
+|------------|--------------|
+| **Search files** | Accepts a search query, returns matching file names and types |
+| **Read Google Docs** | Fetches the doc and converts it to **Markdown** |
+| **Read Google Sheets** | Fetches the sheet and converts it to **CSV** |
+| **Read Google Slides** | Fetches the presentation as **plain text** |
+| **Read Google Drawings** | Returns as **PNG** |
+| **Read other files** | Returns in native format (PDF, images, etc.) |
+
+Files are accessed via the URI scheme `gdrive:///<file_id>`.
 
 ---
 
-## Project structure (after setup)
+## Project Structure
 
 ```
 google-mcp-server-test/
 ├── .vscode/
-│   └── mcp.json
+│   └── mcp.json                             ← VS Code MCP server config (committed)
 ├── node_modules/
-│   └── .gdrive-server-credentials.json   ← saved after auth
-├── gcp-oauth.keys.json                    ← your OAuth keys (keep secret!)
-├── package.json
-└── package-lock.json
+│   └── .gdrive-server-credentials.json     ← saved after auth (gitignored 🔒)
+├── .gitignore                               ← excludes credentials and node_modules
+├── gcp-oauth.keys.json                      ← your OAuth keys (gitignored 🔒)
+├── package.json                             ← declares the MCP server dependency
+└── SETUP-GUIDE.md                           ← this file
 ```
 
-> ⚠️ **Security:** Never commit `gcp-oauth.keys.json` or `.gdrive-server-credentials.json` to git.
-> Add them to `.gitignore`.
+> ⚠️ **Security reminder:** `gcp-oauth.keys.json` and `.gdrive-server-credentials.json` are
+> both listed in `.gitignore`. Never commit them — they contain secrets that grant access to
+> your Google Drive.
