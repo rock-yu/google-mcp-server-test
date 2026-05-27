@@ -27,6 +27,8 @@ explore MCP before committing to a hosted deployment.
 
 > If you later want to share this with a team, move the server to a hosted environment and switch
 > from `stdio` transport to `http`/`sse` in `.vscode/mcp.json`.
+>
+> → **Production roadmap:** [PRODUCTION-PLAN.md](./PRODUCTION-PLAN.md) — phases, milestones, and exit criteria.
 
 ---
 
@@ -50,6 +52,21 @@ files from your Drive.
 
 ---
 
+## Credentials
+
+The setup uses two separate credential files. Both stay on your machine and are gitignored.
+
+| File | Purpose | Where it comes from |
+|------|---------|---------------------|
+| **`gcp-oauth.keys.json`** (project root) | **OAuth client config** — identifies your app to Google (client ID, client secret, redirect URIs). Used only to start the browser login flow; it does not grant Drive access by itself. | **Google Cloud Console** — create an OAuth client ID (Desktop app), download the JSON, rename to `gcp-oauth.keys.json`, and place in the project root. See [SETUP-GUIDE.md](./SETUP-GUIDE.md) Step 2d. |
+| **`node_modules/.gdrive-server-credentials.json`** | **Your user OAuth tokens** — access token, refresh token, scope, and expiry. The MCP server loads this on startup to call the Drive API on your behalf (read-only: `drive.readonly`). | **Created locally** when you run the one-time auth command in Step 3. After you sign in and click Allow in the browser, the server writes `auth.credentials` to this path (terminal message: *"Credentials saved. You can now run the server."*). Path is set by `GDRIVE_CREDENTIALS_PATH` in `.vscode/mcp.json` / `.cursor/mcp.json`. |
+
+In short: **`gcp-oauth.keys.json`** is the app’s identity from Google Cloud; **`.gdrive-server-credentials.json`** is your personal session after you consent. You need both — the keys file for auth, the credentials file for every server run.
+
+> 🔒 Never commit either file. They are listed in `.gitignore`.
+
+---
+
 ## What the MCP server can do
 
 | Capability | Output format |
@@ -70,12 +87,15 @@ google-mcp-server-test/
 ├── .vscode/
 │   └── mcp.json                            ← VS Code MCP server config
 ├── node_modules/
-│   └── .gdrive-server-credentials.json    ← saved after auth (gitignored 🔒)
+│   └── .gdrive-server-credentials.json    ← user OAuth tokens (see Credentials)
 ├── .gitignore
-├── gcp-oauth.keys.json                     ← your OAuth keys (gitignored 🔒)
+├── gcp-oauth.keys.json                     ← OAuth client config (see Credentials)
 ├── package.json
 ├── README.md                               ← this file
-└── SETUP-GUIDE.md                          ← step-by-step setup instructions
+├── SETUP-GUIDE.md                          ← step-by-step setup instructions
+├── PRODUCTION-PLAN.md                      ← cloud hosting roadmap
+└── gdrive-cli/
+    ├── README.md                           ← standalone Drive CLI (Python)
+    └── gdrive_cli.py
 ```
 
-> 🔒 `gcp-oauth.keys.json` and `.gdrive-server-credentials.json` are in `.gitignore` — never commit them.

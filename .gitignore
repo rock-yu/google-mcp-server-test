@@ -9,3 +9,8 @@ gcp-oauth.keys.json
 # npm logs
 npm-debug.log*
 package-lock.json
+
+# gdrive-cli (Python)
+gdrive-cli/.venv/
+gdrive-cli/__pycache__/
+*.pyc
