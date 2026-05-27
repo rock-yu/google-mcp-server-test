@@ -17,6 +17,62 @@ This dossier documents the architecture, entity relationships, and runtime mecha
 
 The diagram below overlays the entity relationship model onto the architecture layer model, showing exactly which layer each entity inhabits and how relationships cross layer boundaries.
 
+```mermaid
+flowchart TD
+    %% Styling
+    classDef user fill:#d4b8e8,stroke:#333,color:#000
+    classDef anthropic fill:#b8e6d4,stroke:#333,color:#000
+    classDef thirdparty fill:#f4b8b8,stroke:#333,color:#000
+    classDef consent fill:#f4d4a8,stroke:#333,color:#000
+
+    subgraph L1["L1 - User layer"]
+        U["User\nInitiates/consents/grants"]:::user
+    end
+
+    subgraph L2["L2 - App layer"]
+        CA["Claude App\nDesktop / Web UI"]:::anthropic
+    end
+
+    subgraph L3["L3 - Connector platform"]
+        CP["Connector platform\nclaude.com/connectors"]:::anthropic
+    end
+
+    subgraph L4["L4 - Connector instance"]
+        CI["Connector instance\ne.g. Google Drive"]:::anthropic
+        UC["User consent\nOAuth / approval flow"]:::consent
+    end
+
+    subgraph L5["L5 - MCP protocol"]
+        MCP["MCP server\nProtocol-agnostic · reusable"]:::anthropic
+        TP["Tool Permissions\nScopes granted to connector"]:::consent
+    end
+
+    subgraph L6["L6 - External ecosystem"]
+        CC["Contributing company\ne.g. Google"]:::thirdparty
+        OA["Other AI app\ne.g. Cursor, Windsurf"]:::thirdparty
+    end
+
+    subgraph L7["L7 - Service API layer"]
+        API["Internal service API\ne.g. Google Drive REST API"]:::thirdparty
+    end
+
+    %% Solid connections (Structural/Initiates)
+    U -->|"interacts with"| CA
+    CA -->|"browses"| CP
+    CP -->|"hosts"| CI
+    CP -->|"triggers"| UC
+    CI -->|"wraps/registers"| MCP
+    CC -->|"calls"| MCP
+    OA -->|"also connects"| MCP
+
+    %% Dashed connections (Indirect/out-of-band)
+    U -.->|"grants"| UC
+    UC -.->|"defines scopes"| TP
+    TP -.->|"enforced by"| MCP
+    CC -->|"owns"| API
+    MCP -->|"calls"| API
+```
+
 ![mcp-entity-layer-overlay](./MCP_Layered_Entity_Map.png)
 
 
