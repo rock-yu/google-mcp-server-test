@@ -9,6 +9,14 @@
       "required": ["result"]
     }
   },
+  "commonAnnotations": {
+    "destructiveDriveWrite": {
+      "readOnlyHint": false,
+      "destructiveHint": true,
+      "idempotentHint": false,
+      "openWorldHint": true
+    }
+  },
   "tools": {
     "update_file": {
       "inputSchema": {
@@ -26,7 +34,8 @@
         },
         "required": ["file_id"]
       },
-      "outputSchemaRef": "stringResult"
+      "outputSchemaRef": "stringResult",
+      "annotationsRef": "destructiveDriveWrite"
     }
   }
 }

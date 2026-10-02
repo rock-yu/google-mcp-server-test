@@ -12,7 +12,13 @@ ROOT = Path(__file__).resolve().parents[2]
 
 
 @asynccontextmanager
-async def fake_mcp_session(*, read_only: bool = False):
+async def fake_mcp_session(
+    *,
+    read_only: bool = False,
+    drive_read_only: bool = False,
+    cwd: Path | None = None,
+    audit_path: Path | None = None,
+):
     env = dict(os.environ)
     env.update(
         {
@@ -22,12 +28,22 @@ async def fake_mcp_session(*, read_only: bool = False):
             ),
         }
     )
+    env.pop("FAKE_DRIVE_READ_ONLY", None)
+    env.pop("DRIVE_MCP_READ_ONLY", None)
+    env.pop("FAKE_DRIVE_AUDIT_PATH", None)
+    env["PYTHONPATH"] = os.pathsep.join(
+        filter(None, (str(ROOT), env.get("PYTHONPATH")))
+    )
     if read_only:
         env["FAKE_DRIVE_READ_ONLY"] = "1"
+    if drive_read_only:
+        env["DRIVE_MCP_READ_ONLY"] = "1"
+    if audit_path:
+        env["FAKE_DRIVE_AUDIT_PATH"] = str(audit_path)
     parameters = StdioServerParameters(
         command=sys.executable,
         args=["-m", "tests.support.fake_server"],
-        cwd=ROOT,
+        cwd=cwd or ROOT,
         env=env,
     )
     async with stdio_client(parameters) as (read, write):

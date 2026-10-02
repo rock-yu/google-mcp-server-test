@@ -40,6 +40,51 @@ class SchemaContractTests(unittest.IsolatedAsyncioTestCase):
             contract_diff(expected_extension, actual_extension),
         )
 
+    async def test_annotations_classify_every_side_effect(self):
+        async with fake_mcp_session() as session:
+            actual = normalize_tools((await session.list_tools()).tools)
+        self.assertEqual(
+            actual["download_file_content"]["annotations"],
+            {
+                "destructiveHint": True,
+                "idempotentHint": False,
+                "openWorldHint": True,
+                "readOnlyHint": False,
+            },
+        )
+        for name in ("create_file", "copy_file"):
+            self.assertFalse(actual[name]["annotations"]["readOnlyHint"])
+            self.assertFalse(actual[name]["annotations"]["destructiveHint"])
+            self.assertFalse(actual[name]["annotations"]["idempotentHint"])
+        self.assertTrue(actual["update_file"]["annotations"]["destructiveHint"])
+
+    async def test_drive_read_only_registration_and_retained_contracts(self):
+        async with fake_mcp_session() as default_session:
+            default_tools = normalize_tools((await default_session.list_tools()).tools)
+        async with fake_mcp_session(drive_read_only=True) as read_only_session:
+            read_only_tools = normalize_tools(
+                (await read_only_session.list_tools()).tools
+            )
+            omitted_call = await read_only_session.call_tool(
+                "create_file", {"name": "Denied.txt", "content": "denied"}
+            )
+        self.assertEqual(
+            set(read_only_tools),
+            {
+                "search_files",
+                "read_file_content",
+                "list_recent_files",
+                "get_file_metadata",
+                "download_file_content",
+                "get_file_permissions",
+            },
+        )
+        self.assertEqual(
+            read_only_tools,
+            {name: default_tools[name] for name in read_only_tools},
+        )
+        self.assertTrue(omitted_call.is_error)
+
 
 if __name__ == "__main__":
     unittest.main()

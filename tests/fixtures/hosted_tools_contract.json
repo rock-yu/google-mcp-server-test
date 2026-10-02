@@ -64,6 +64,26 @@
       "required": ["files"]
     }
   },
+  "commonAnnotations": {
+    "driveRead": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": true
+    },
+    "localDownload": {
+      "readOnlyHint": false,
+      "destructiveHint": true,
+      "idempotentHint": false,
+      "openWorldHint": true
+    },
+    "additiveDriveWrite": {
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "idempotentHint": false,
+      "openWorldHint": true
+    }
+  },
   "tools": {
     "search_files": {
       "inputSchema": {
@@ -79,7 +99,8 @@
         },
         "required": ["query"]
       },
-      "outputSchemaRef": "hostedFilePage"
+      "outputSchemaRef": "hostedFilePage",
+      "annotationsRef": "driveRead"
     },
     "read_file_content": {
       "inputSchema": {
@@ -87,7 +108,8 @@
         "properties": {"file_id": {"type": "string"}},
         "required": ["file_id"]
       },
-      "outputSchemaRef": "stringResult"
+      "outputSchemaRef": "stringResult",
+      "annotationsRef": "driveRead"
     },
     "list_recent_files": {
       "inputSchema": {
@@ -102,7 +124,8 @@
           "excludeContentSnippets": {"type": "boolean", "default": false}
         }
       },
-      "outputSchemaRef": "hostedFilePage"
+      "outputSchemaRef": "hostedFilePage",
+      "annotationsRef": "driveRead"
     },
     "get_file_metadata": {
       "inputSchema": {
@@ -113,7 +136,8 @@
         },
         "required": ["fileId"]
       },
-      "outputSchemaRef": "hostedFile"
+      "outputSchemaRef": "hostedFile",
+      "annotationsRef": "driveRead"
     },
     "download_file_content": {
       "inputSchema": {
@@ -127,7 +151,8 @@
         },
         "required": ["file_id"]
       },
-      "outputSchemaRef": "stringResult"
+      "outputSchemaRef": "stringResult",
+      "annotationsRef": "localDownload"
     },
     "create_file": {
       "inputSchema": {
@@ -143,7 +168,8 @@
         },
         "required": ["name", "content"]
       },
-      "outputSchemaRef": "stringResult"
+      "outputSchemaRef": "stringResult",
+      "annotationsRef": "additiveDriveWrite"
     },
     "copy_file": {
       "inputSchema": {
@@ -161,7 +187,8 @@
         },
         "required": ["file_id"]
       },
-      "outputSchemaRef": "stringResult"
+      "outputSchemaRef": "stringResult",
+      "annotationsRef": "additiveDriveWrite"
     },
     "get_file_permissions": {
       "inputSchema": {
@@ -169,7 +196,8 @@
         "properties": {"file_id": {"type": "string"}},
         "required": ["file_id"]
       },
-      "outputSchemaRef": "stringResult"
+      "outputSchemaRef": "stringResult",
+      "annotationsRef": "driveRead"
     }
   }
 }

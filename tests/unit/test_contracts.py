@@ -7,6 +7,7 @@ from tests.support.contracts import (
     contract_diff,
     load_json,
     normalize_tool,
+    validate_semantic_cases,
     validate_deviations,
 )
 
@@ -57,6 +58,16 @@ class SchemaNormalizerTests(unittest.TestCase):
             ("inputSchema.properties.mode.enum", ["a"]),
             ("outputSchema.type", "object"),
             ("annotations.readOnlyHint", False),
+            ("annotations.destructiveHint", True),
+            ("annotations.idempotentHint", False),
+            ("annotations.openWorldHint", False),
+        )
+        self.tool["annotations"].update(
+            {
+                "destructiveHint": False,
+                "idempotentHint": True,
+                "openWorldHint": True,
+            }
         )
         expected = normalize_tool(self.tool)
         for path, value in retained_mutations:
@@ -67,7 +78,9 @@ class SchemaNormalizerTests(unittest.TestCase):
                 for part in parts[:-1]:
                     target = target[part]
                 target[parts[-1]] = value
-                self.assertTrue(contract_diff(expected, normalize_tool(changed)))
+                diff = contract_diff(expected, normalize_tool(changed))
+                self.assertTrue(diff)
+                self.assertIn(parts[-1], diff)
 
 
 class DeviationTests(unittest.TestCase):
@@ -97,6 +110,25 @@ class DeviationTests(unittest.TestCase):
         broad["deviations"][0]["rule"] = "ignore-tool"
         with self.assertRaisesRegex(ValueError, "over-broad"):
             validate_deviations(broad)
+
+
+class SemanticCaseValidationTests(unittest.TestCase):
+    def setUp(self):
+        self.cases = load_json(FIXTURES / "semantic_cases.json")
+        self.dataset = load_json(FIXTURES / "drive_dataset.json")
+
+    def test_reviewed_semantic_cases_are_valid(self):
+        validate_semantic_cases(self.cases, self.dataset)
+
+    def test_rejects_incomplete_and_contradictory_cases(self):
+        incomplete = copy.deepcopy(self.cases)
+        del incomplete["read"][0]["text"]
+        with self.assertRaisesRegex(ValueError, "exactly one expectation"):
+            validate_semantic_cases(incomplete, self.dataset)
+        contradictory = copy.deepcopy(self.cases)
+        contradictory["read"][0]["errorContains"] = "unexpected"
+        with self.assertRaisesRegex(ValueError, "exactly one expectation"):
+            validate_semantic_cases(contradictory, self.dataset)
 
 
 if __name__ == "__main__":

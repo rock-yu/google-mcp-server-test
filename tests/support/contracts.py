@@ -70,9 +70,46 @@ def load_json(path: Path) -> dict:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
+def validate_semantic_cases(cases: dict, dataset: dict) -> None:
+    required_sections = {"search", "invalidSearch", "recent", "read", "download", "create", "copy", "permissions"}
+    missing = required_sections - cases.keys()
+    if missing:
+        raise ValueError(f"semantic cases lack sections: {', '.join(sorted(missing))}")
+    known_ids = {file["id"] for file in dataset["files"]} | set(
+        dataset.get("failures", {})
+    )
+    for section in ("read", "download", "create", "copy", "permissions"):
+        names: set[str] = set()
+        for case in cases[section]:
+            name = case.get("name")
+            if not name or name in names:
+                raise ValueError(f"invalid or duplicate {section} case name: {name}")
+            names.add(name)
+            if section in {"read", "download", "permissions"}:
+                if case.get("fileId") not in known_ids:
+                    raise ValueError(f"unknown fileId in {section} case {name}")
+            if section == "copy":
+                file_id = case.get("arguments", {}).get("file_id")
+                if file_id not in known_ids:
+                    raise ValueError(f"unknown copy source in case {name}")
+            expected_keys = {
+                "read": {"text", "contains", "errorContains"},
+                "download": {"bytesBase64", "text", "errorContains"},
+                "create": {"expectedMimeType", "errorContains"},
+                "copy": {"expectedName", "errorContains"},
+                "permissions": {"text", "errorContains"},
+            }[section]
+            present = expected_keys & case.keys()
+            if len(present) != 1:
+                raise ValueError(
+                    f"{section} case {name} must define exactly one expectation"
+                )
+
+
 def load_contract_fixture(path: Path) -> dict:
     fixture = load_json(path)
     common = fixture.get("commonSchemas", {})
+    common_annotations = fixture.get("commonAnnotations", {})
     result = {}
     for name, contract in fixture["tools"].items():
         expanded = {"name": name, "inputSchema": contract["inputSchema"]}
@@ -80,7 +117,9 @@ def load_contract_fixture(path: Path) -> dict:
             expanded["outputSchema"] = common[contract["outputSchemaRef"]]
         elif "outputSchema" in contract:
             expanded["outputSchema"] = contract["outputSchema"]
-        if "annotations" in contract:
+        if "annotationsRef" in contract:
+            expanded["annotations"] = common_annotations[contract["annotationsRef"]]
+        elif "annotations" in contract:
             expanded["annotations"] = contract["annotations"]
         result[name] = normalize_tool(expanded)
     return result

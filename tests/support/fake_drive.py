@@ -63,6 +63,24 @@ def validate_dataset(data: dict) -> None:
     for name in ("inaccessible", "missing"):
         if name not in failures or not isinstance(failures[name].get("status"), int):
             raise ValueError(f"missing failure fixture: {name}")
+    for name, failure in failures.items():
+        if not isinstance(failure, dict) or not isinstance(failure.get("status"), int):
+            raise ValueError(f"invalid failure fixture: {name}")
+        if not failure.get("reason"):
+            raise ValueError(f"failure fixture lacks reason: {name}")
+    operation_failures = data.get("operationFailures", {})
+    for operation, keyed_failures in operation_failures.items():
+        if operation not in {"create", "copy"} or not isinstance(keyed_failures, dict):
+            raise ValueError(f"invalid operation failure fixture: {operation}")
+        for key, failure in keyed_failures.items():
+            if (
+                not key
+                or not isinstance(failure.get("status"), int)
+                or not failure.get("reason")
+            ):
+                raise ValueError(
+                    f"invalid {operation} operation failure fixture: {key}"
+                )
 
 
 class FakeRequest:
@@ -276,13 +294,24 @@ class FakeFilesResource:
             return FakeRequest(error=error)
 
     def create(self, body, media_body, **kwargs):
+        failure = self.backend.operation_failure("create", body["name"])
+        if failure:
+            return FakeRequest(
+                error=_http_error(failure["status"], failure["reason"])
+            )
         file_id = self.backend.next_id("created")
         content = media_body.getbytes(0, media_body.size()).decode()
         file = self.backend.new_file(file_id, body, content)
         self.backend.records[file_id] = file
+        self.backend.record_mutation("create", file)
         return FakeRequest(file)
 
     def copy(self, fileId, body, **kwargs):
+        failure = self.backend.operation_failure("copy", body.get("name", ""))
+        if failure:
+            return FakeRequest(
+                error=_http_error(failure["status"], failure["reason"])
+            )
         try:
             source = copy.deepcopy(self._file(fileId))
         except HttpError as error:
@@ -291,6 +320,11 @@ class FakeFilesResource:
         source.update(body)
         source["id"] = file_id
         self.backend.records[file_id] = source
+        self.backend.record_mutation(
+            "copy",
+            source,
+            source=copy.deepcopy(self._file(fileId)),
+        )
         return FakeRequest(source)
 
     def update(self, fileId, body, addParents=None, removeParents=None, **kwargs):
@@ -301,6 +335,7 @@ class FakeFilesResource:
         file.update(body)
         if addParents:
             file["parents"] = [addParents]
+        self.backend.record_mutation("update", file)
         return FakeRequest(file)
 
 
@@ -316,11 +351,14 @@ class FakePermissionsResource:
 
 
 class FakeDriveService:
-    def __init__(self, dataset: dict | None = None):
+    def __init__(self, dataset: dict | None = None, audit_path: Path | None = None):
         data = copy.deepcopy(dataset or load_dataset())
         self.records = {file["id"]: file for file in data["files"]}
         self.permission_records = data.get("permissions", {})
         self.failures = data.get("failures", {})
+        self.operation_failures = data.get("operationFailures", {})
+        self.audit_path = audit_path
+        self.audit: list[dict] = []
         self._counter = 0
         self._files_resource = FakeFilesResource(self)
         self._permissions_resource = FakePermissionsResource(self)
@@ -334,6 +372,23 @@ class FakeDriveService:
     def next_id(self, prefix: str) -> str:
         self._counter += 1
         return f"{prefix}-{self._counter}"
+
+    def operation_failure(self, operation: str, key: str) -> dict | None:
+        return self.operation_failures.get(operation, {}).get(key)
+
+    def record_mutation(self, operation: str, file: dict, **details) -> None:
+        self.audit.append(
+            {
+                "operation": operation,
+                "file": copy.deepcopy(file),
+                **copy.deepcopy(details),
+            }
+        )
+        if self.audit_path:
+            self.audit_path.write_text(
+                json.dumps(self.audit, indent=2, sort_keys=True),
+                encoding="utf-8",
+            )
 
     @staticmethod
     def new_file(file_id: str, body: dict, content: str) -> dict:

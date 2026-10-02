@@ -68,7 +68,7 @@
     {
       "name": "negative-shared",
       "query": "sharedWithMe != true",
-      "ids": ["doc-alpha", "folder-a", "sheet-delta", "sparse-epsilon"]
+      "ids": ["doc-alpha", "folder-a", "sheet-delta", "slide-theta", "sparse-epsilon"]
     },
     {
       "name": "grouping-and-not",
@@ -84,8 +84,47 @@
     "title contains 'unterminated"
   ],
   "recent": {
-    "recency": ["sheet-delta", "image-beta", "doc-alpha", "text-gamma", "folder-a", "sparse-epsilon"],
-    "lastModified": ["sheet-delta", "image-beta", "doc-alpha", "text-gamma", "folder-a", "sparse-epsilon"],
-    "lastModifiedByMe": ["sheet-delta", "doc-alpha", "text-gamma", "folder-a", "image-beta", "sparse-epsilon"]
-  }
+    "recency": ["sheet-delta", "image-beta", "doc-alpha", "text-gamma", "folder-a", "slide-theta", "sparse-epsilon"],
+    "lastModified": ["sheet-delta", "image-beta", "doc-alpha", "text-gamma", "folder-a", "slide-theta", "sparse-epsilon"],
+    "lastModifiedByMe": ["sheet-delta", "doc-alpha", "text-gamma", "folder-a", "slide-theta", "image-beta", "sparse-epsilon"]
+  },
+  "read": [
+    {"name": "native-text", "fileId": "text-gamma", "text": "hello notes"},
+    {"name": "google-doc", "fileId": "doc-alpha", "text": "# Report Alpha\nArchitecture notes."},
+    {"name": "google-sheet", "fileId": "sheet-delta", "text": "item,amount\nhosting,42\n"},
+    {"name": "google-slides", "fileId": "slide-theta", "text": "Slide 1\nRoadmap\n"},
+    {"name": "binary-message", "fileId": "image-beta", "contains": "binary content and cannot be returned as text"},
+    {"name": "missing", "fileId": "missing", "errorContains": "HTTP 404"},
+    {"name": "inaccessible", "fileId": "inaccessible", "errorContains": "HTTP 403"},
+    {"name": "backend-error", "fileId": "backend-error", "errorContains": "HTTP 500"}
+  ],
+  "download": [
+    {"name": "binary-explicit", "fileId": "image-beta", "path": "image.jpg", "bytesBase64": "SlBFR0RBVEE="},
+    {"name": "doc-explicit", "fileId": "doc-alpha", "path": "report.md", "text": "# Report Alpha\nArchitecture notes."},
+    {"name": "sheet-explicit", "fileId": "sheet-delta", "path": "budget.csv", "text": "item,amount\nhosting,42\n"},
+    {"name": "slides-explicit", "fileId": "slide-theta", "path": "roadmap.txt", "text": "Slide 1\nRoadmap\n"},
+    {"name": "default-path", "fileId": "image-beta", "defaultPath": "Diagram Beta.jpg", "bytesBase64": "SlBFR0RBVEE="},
+    {"name": "missing", "fileId": "missing", "errorContains": "HTTP 404"},
+    {"name": "inaccessible", "fileId": "inaccessible", "errorContains": "needs write access"},
+    {"name": "backend-error", "fileId": "backend-error", "errorContains": "HTTP 500"}
+  ],
+  "create": [
+    {"name": "defaults", "arguments": {"name": "Created Default.txt", "content": "default body"}, "expectedMimeType": "text/plain", "expectedParents": ["root"]},
+    {"name": "explicit-mime-parent", "arguments": {"name": "Created JSON.json", "content": "{\"ok\":true}", "mime_type": "application/json", "parent_id": "folder-a"}, "expectedMimeType": "application/json", "expectedParents": ["folder-a"]},
+    {"name": "backend-error", "arguments": {"name": "Create Failure.txt", "content": "fail"}, "errorContains": "HTTP 500"}
+  ],
+  "copy": [
+    {"name": "defaults", "arguments": {"file_id": "doc-alpha"}, "expectedName": "Report Alpha", "expectedParents": ["root"], "sourceId": "doc-alpha"},
+    {"name": "explicit-name-parent", "arguments": {"file_id": "text-gamma", "name": "Copied Notes", "parent_id": "root"}, "expectedName": "Copied Notes", "expectedParents": ["root"], "sourceId": "text-gamma"},
+    {"name": "missing", "arguments": {"file_id": "missing"}, "errorContains": "HTTP 404"},
+    {"name": "inaccessible", "arguments": {"file_id": "inaccessible"}, "errorContains": "needs write access"},
+    {"name": "backend-error", "arguments": {"file_id": "doc-alpha", "name": "Copy Failure"}, "errorContains": "HTTP 500"}
+  ],
+  "permissions": [
+    {"name": "multiple", "fileId": "doc-alpha", "text": "owner user — Test Owner (permission-owner)\nreader group — reviewers@example.test (permission-group)"},
+    {"name": "sparse", "fileId": "text-gamma", "text": "reader anyone — anyone (permission-anyone)"},
+    {"name": "empty", "fileId": "folder-a", "text": "No permissions found."},
+    {"name": "inaccessible", "fileId": "inaccessible", "errorContains": "needs write access"},
+    {"name": "backend-error", "fileId": "permission-failure", "errorContains": "HTTP 500"}
+  ]
 }

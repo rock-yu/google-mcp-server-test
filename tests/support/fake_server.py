@@ -34,7 +34,11 @@ def main() -> None:
         if os.environ.get("FAKE_DRIVE_READ_ONLY") == "1"
         else write_credentials()
     )
-    server.configure_service(FakeDriveService(), credentials)
+    audit_value = os.environ.get("FAKE_DRIVE_AUDIT_PATH")
+    server.configure_service(
+        FakeDriveService(audit_path=Path(audit_value) if audit_value else None),
+        credentials,
+    )
     server.main(authenticate=False)
 
 

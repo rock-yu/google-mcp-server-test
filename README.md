@@ -36,12 +36,20 @@ compares the eight hosted counterparts with the reviewed normalized contract in
 `update_file` has a separate local-extension fixture. Semantic parity cases cover
 `search_files`, `list_recent_files`, and `get_file_metadata`.
 
-Conformance is intentionally scoped: the other five hosted counterparts receive
-schema and regression coverage but do not claim full response-semantic parity.
-Google's hosted layer generates `contentSnippet`, while Drive API v3 does not
-expose an equivalent. Its absent local value is the only approved read-tool
-deviation and is registered narrowly in
+Semantic cases cover all eight hosted counterparts. They verify structured search,
+recent-file and metadata behavior; native and Google-format reads and downloads;
+create/copy state transitions and authorization failures; and permission
+serialization and errors. Google's hosted layer generates `contentSnippet`, while
+Drive API v3 does not expose an equivalent. Its absent local value is the only
+approved read-tool deviation and is registered narrowly in
 [`tests/fixtures/deviations.json`](tests/fixtures/deviations.json).
+
+The suite also checks MCP safety annotations and both tool-registration modes.
+Set `DRIVE_MCP_READ_ONLY=1` before starting the server to omit the three tools that
+mutate Drive (`create_file`, `copy_file`, and `update_file`). Download remains
+available because this mode protects Drive state, not the local filesystem;
+`download_file_content` is annotated as destructive because it may overwrite its
+selected local path.
 
 ## Opt-in live checks
 

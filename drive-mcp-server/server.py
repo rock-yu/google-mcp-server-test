@@ -27,6 +27,7 @@ Read tools need only ``drive.readonly``; the write tools require the
 
 from __future__ import annotations
 
+import os
 import sys
 from pathlib import Path
 from typing import NotRequired, TypedDict
@@ -41,8 +42,7 @@ import gdrive_cli  # noqa: E402
 from googleapiclient.errors import HttpError  # noqa: E402
 from mcp.server.mcpserver import MCPServer  # noqa: E402
 from mcp.server.mcpserver.exceptions import ToolError  # noqa: E402
-
-mcp = MCPServer("drive-mcp-server")
+from mcp.types import ToolAnnotations  # noqa: E402
 
 _service = None
 _creds = None
@@ -120,13 +120,6 @@ def _tool_error(action: str, error: HttpError) -> ToolError:
     )
 
 
-@mcp.tool(
-    name="search_files",
-    description=(
-        "Search Google Drive using the hosted structured query dialect. Returns "
-        "hosted-compatible File objects and an optional nextPageToken."
-    ),
-)
 def search_files(
     query: str,
     pageSize: int = 10,
@@ -156,14 +149,6 @@ def search_files(
         raise _tool_error("Searching files", error)
 
 
-@mcp.tool(
-    name="read_file_content",
-    description=(
-        "Read a Google Drive file by id. Google Docs export to Markdown, Sheets "
-        "to CSV, and Slides to plain text; other text files return their native "
-        "text. Binary files cannot be returned as text."
-    ),
-)
 def read_file_content(file_id: str) -> str:
     """Read/export the content of a Drive file.
 
@@ -189,13 +174,6 @@ def read_file_content(file_id: str) -> str:
     return info["text"] or ""
 
 
-@mcp.tool(
-    name="list_recent_files",
-    description=(
-        "List recent Google Drive files using hosted sort and pagination options. "
-        "Returns hosted-compatible File objects and an optional nextPageToken."
-    ),
-)
 def list_recent_files(
     orderBy: str = "recency",
     pageSize: int = 10,
@@ -225,12 +203,6 @@ def list_recent_files(
         raise _tool_error("Listing recent files", error)
 
 
-@mcp.tool(
-    name="get_file_metadata",
-    description=(
-        "Return hosted-compatible structured metadata for a Google Drive file."
-    ),
-)
 def get_file_metadata(
     fileId: str, excludeContentSnippets: bool = False
 ) -> HostedFile:
@@ -249,14 +221,6 @@ def get_file_metadata(
         raise _tool_error(f"Getting metadata for '{fileId}'", error)
 
 
-@mcp.tool(
-    name="download_file_content",
-    description=(
-        "Download a Drive file's bytes to a local path (Google-native files are "
-        "exported first). The path defaults to the file's name. Returns the path "
-        "and the number of bytes written."
-    ),
-)
 def download_file_content(file_id: str, output_path: str | None = None) -> str:
     """Save a Drive file's bytes to a local path.
 
@@ -274,14 +238,6 @@ def download_file_content(file_id: str, output_path: str | None = None) -> str:
     return f"Wrote {count} bytes to {path}"
 
 
-@mcp.tool(
-    name="create_file",
-    description=(
-        "Create a new Google Drive file from text content, optionally within a "
-        "parent folder. Requires write access (the 'drive.file' scope). Returns "
-        "the new file's id and name."
-    ),
-)
 def create_file(
     name: str, content: str, mime_type: str = "text/plain", parent_id: str | None = None
 ) -> str:
@@ -301,14 +257,6 @@ def create_file(
     return f"Created '{created['name']}' (id: {created['id']})"
 
 
-@mcp.tool(
-    name="copy_file",
-    description=(
-        "Copy an existing Google Drive file, optionally with a new name and/or "
-        "parent folder. Requires write access (the 'drive.file' scope). Returns "
-        "the new file's id and name."
-    ),
-)
 def copy_file(file_id: str, name: str | None = None, parent_id: str | None = None) -> str:
     """Copy an existing Drive file.
 
@@ -325,13 +273,6 @@ def copy_file(file_id: str, name: str | None = None, parent_id: str | None = Non
     return f"Copied to '{copied['name']}' (id: {copied['id']})"
 
 
-@mcp.tool(
-    name="get_file_permissions",
-    description=(
-        "List the sharing permissions of a Drive file by id. Returns one "
-        "permission per line as 'role type — grantee (id)'."
-    ),
-)
 def get_file_permissions(file_id: str) -> str:
     """List a Drive file's sharing permissions.
 
@@ -352,16 +293,6 @@ def get_file_permissions(file_id: str) -> str:
     return "\n".join(lines)
 
 
-@mcp.tool(
-    name="update_file",
-    description=(
-        "Update an existing Drive file's metadata only — rename it via a "
-        "non-empty 'title' and/or move it to a new parent folder via 'parent_id' "
-        "(replacing its current parent). Content is never modified. Local-only "
-        "extension beyond the hosted toolset. Requires write access (the "
-        "'drive.file' scope)."
-    ),
-)
 def update_file(file_id: str, title: str | None = None, parent_id: str | None = None) -> str:
     """Update a Drive file's metadata (rename and/or move).
 
@@ -379,6 +310,140 @@ def update_file(file_id: str, title: str | None = None, parent_id: str | None = 
         raise _tool_error(f"Updating '{file_id}'", error)
     parents = ", ".join(updated.get("parents", [])) or "—"
     return f"Updated '{updated['name']}' (id: {updated['id']}; parents: {parents})"
+
+
+_READ_ANNOTATIONS = ToolAnnotations(
+    read_only_hint=True,
+    destructive_hint=False,
+    idempotent_hint=True,
+    open_world_hint=True,
+)
+_DOWNLOAD_ANNOTATIONS = ToolAnnotations(
+    read_only_hint=False,
+    destructive_hint=True,
+    idempotent_hint=False,
+    open_world_hint=True,
+)
+_ADDITIVE_WRITE_ANNOTATIONS = ToolAnnotations(
+    read_only_hint=False,
+    destructive_hint=False,
+    idempotent_hint=False,
+    open_world_hint=True,
+)
+_DESTRUCTIVE_WRITE_ANNOTATIONS = ToolAnnotations(
+    read_only_hint=False,
+    destructive_hint=True,
+    idempotent_hint=False,
+    open_world_hint=True,
+)
+
+_TOOL_DEFINITIONS = (
+    (
+        search_files,
+        "search_files",
+        "Search Google Drive using the hosted structured query dialect. Returns "
+        "hosted-compatible File objects and an optional nextPageToken.",
+        _READ_ANNOTATIONS,
+        False,
+    ),
+    (
+        read_file_content,
+        "read_file_content",
+        "Read a Google Drive file by id. Google Docs export to Markdown, Sheets "
+        "to CSV, and Slides to plain text; other text files return their native "
+        "text. Binary files cannot be returned as text.",
+        _READ_ANNOTATIONS,
+        False,
+    ),
+    (
+        list_recent_files,
+        "list_recent_files",
+        "List recent Google Drive files using hosted sort and pagination options. "
+        "Returns hosted-compatible File objects and an optional nextPageToken.",
+        _READ_ANNOTATIONS,
+        False,
+    ),
+    (
+        get_file_metadata,
+        "get_file_metadata",
+        "Return hosted-compatible structured metadata for a Google Drive file.",
+        _READ_ANNOTATIONS,
+        False,
+    ),
+    (
+        download_file_content,
+        "download_file_content",
+        "Download a Drive file's bytes to a local path (Google-native files are "
+        "exported first). The path defaults to the file's name. Returns the path "
+        "and the number of bytes written.",
+        _DOWNLOAD_ANNOTATIONS,
+        False,
+    ),
+    (
+        create_file,
+        "create_file",
+        "Create a new Google Drive file from text content, optionally within a "
+        "parent folder. Requires write access (the 'drive.file' scope). Returns "
+        "the new file's id and name.",
+        _ADDITIVE_WRITE_ANNOTATIONS,
+        True,
+    ),
+    (
+        copy_file,
+        "copy_file",
+        "Copy an existing Google Drive file, optionally with a new name and/or "
+        "parent folder. Requires write access (the 'drive.file' scope). Returns "
+        "the new file's id and name.",
+        _ADDITIVE_WRITE_ANNOTATIONS,
+        True,
+    ),
+    (
+        get_file_permissions,
+        "get_file_permissions",
+        "List the sharing permissions of a Drive file by id. Returns one "
+        "permission per line as 'role type — grantee (id)'.",
+        _READ_ANNOTATIONS,
+        False,
+    ),
+    (
+        update_file,
+        "update_file",
+        "Update an existing Drive file's metadata only — rename it via a "
+        "non-empty 'title' and/or move it to a new parent folder via 'parent_id' "
+        "(replacing its current parent). Content is never modified. Local-only "
+        "extension beyond the hosted toolset. Requires write access (the "
+        "'drive.file' scope).",
+        _DESTRUCTIVE_WRITE_ANNOTATIONS,
+        True,
+    ),
+)
+
+
+def drive_read_only_from_env() -> bool:
+    value = os.environ.get("DRIVE_MCP_READ_ONLY", "").strip().lower()
+    if value in {"", "0", "false", "no", "off"}:
+        return False
+    if value in {"1", "true", "yes", "on"}:
+        return True
+    raise SystemExit(
+        "DRIVE_MCP_READ_ONLY must be one of: 1, true, yes, on, 0, false, no, off"
+    )
+
+
+def create_mcp_server(*, drive_read_only: bool = False) -> MCPServer:
+    server = MCPServer("drive-mcp-server")
+    for function, name, description, annotations, mutates_drive in _TOOL_DEFINITIONS:
+        if drive_read_only and mutates_drive:
+            continue
+        server.tool(
+            name=name,
+            description=description,
+            annotations=annotations,
+        )(function)
+    return server
+
+
+mcp = create_mcp_server(drive_read_only=drive_read_only_from_env())
 
 
 def main(authenticate: bool = True) -> None:

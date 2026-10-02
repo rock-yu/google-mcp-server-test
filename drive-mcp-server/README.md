@@ -108,11 +108,34 @@ The server reads the same environment variables as the CLI:
 |----------|---------|---------|
 | `GDRIVE_OAUTH_PATH` | Path to the OAuth client ID/secret JSON | `<repo>/gcp-oauth.keys.json` |
 | `GDRIVE_CREDENTIALS_PATH` | Path to the saved user tokens | `<repo>/node_modules/.gdrive-server-credentials.json` |
+| `DRIVE_MCP_READ_ONLY` | Omit tools that mutate Google Drive (`1`, `true`, `yes`, or `on`) | disabled |
 | `NODE_TLS_REJECT_UNAUTHORIZED=0` | Dev-only: skip TLS verification behind a TLS-inspecting proxy | unset (verification on) |
 
 If credentials are missing, the server exits at startup with an actionable
 message instead of failing on the first tool call. Expired access tokens are
 refreshed and persisted automatically.
+
+`DRIVE_MCP_READ_ONLY` is read once when the process starts, so restart the server
+after changing it. In this mode, `create_file`, `copy_file`, and `update_file` are
+not registered. The six read/download tools retain exactly the same contracts.
+`download_file_content` remains available because the mode prevents Drive mutation,
+not local filesystem writes.
+
+### MCP safety annotations
+
+Every tool advertises all four standard MCP safety hints:
+
+| Tool group | Read-only | Destructive | Idempotent | Open world |
+|---|---:|---:|---:|---:|
+| Search, read, recent, metadata, permissions | yes | no | yes | yes |
+| Download to a local path | no | yes | no | yes |
+| Create and copy | no | no | no | yes |
+| Update metadata | no | yes | no | yes |
+
+Download is destructive because it may overwrite a caller-selected path. Create and
+copy are additive rather than destructive, while update can rename or move existing
+state. These hints help MCP clients make safer choices but are advisory; Drive OAuth
+scope checks and read-only tool omission remain the enforced controls.
 
 ## Run
 
@@ -140,10 +163,12 @@ sources, and strictly validates OpenSpec. It does not load OAuth files or access
 the network.
 
 The schema fixture covers all eight hosted counterparts; `update_file` is checked
-as a local extension. Semantic parity cases currently cover `search_files`,
-`list_recent_files`, and `get_file_metadata`. The registered
-`contentSnippet` omission described above remains the sole approved value-level
-deviation for those tools.
+as a local extension. Semantic parity cases cover all eight hosted counterparts: structured search,
+recent files, metadata, native and Google-format reads/downloads, create/copy state
+transitions, and permission serialization. They include optional inputs, binary
+handling, overwrite behavior, authorization failures, inaccessible resources, and
+controlled backend errors. The registered `contentSnippet` omission described above
+remains the sole approved value-level deviation for the structured read tools.
 
 Credentialed local and hosted checks are deliberately opt-in. Use only a
 dedicated test account with non-sensitive fixture data:

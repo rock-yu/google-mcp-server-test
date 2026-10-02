@@ -1,4 +1,5 @@
 import copy
+import json
 import tempfile
 import unittest
 from pathlib import Path
@@ -37,6 +38,10 @@ class DatasetTests(unittest.TestCase):
         invalid_ref["permissions"]["unknown"] = []
         with self.assertRaisesRegex(ValueError, "invalid permissions"):
             validate_dataset(invalid_ref)
+        invalid_failure = load_dataset()
+        del invalid_failure["failures"]["permission-failure"]["reason"]
+        with self.assertRaisesRegex(ValueError, "lacks reason"):
+            validate_dataset(invalid_failure)
 
 
 class FakeDriveTests(unittest.TestCase):
@@ -87,6 +92,32 @@ class FakeDriveTests(unittest.TestCase):
         self.assertEqual(updated["name"], "Renamed.txt")
         self.assertEqual(updated["parents"], ["folder-a"])
         self.assertEqual(permissions[0]["role"], "owner")
+
+    def test_mutation_audit_and_configured_operation_failures(self):
+        with tempfile.TemporaryDirectory() as directory:
+            audit_path = Path(directory) / "audit.json"
+            service = FakeDriveService(audit_path=audit_path)
+            created = gdrive_cli.create_file(
+                service, "Audited.txt", "body", "text/plain"
+            )
+            audit = json.loads(audit_path.read_text())
+            self.assertEqual(audit[-1]["file"]["id"], created["id"])
+            with self.assertRaises(Exception) as raised:
+                gdrive_cli.create_file(
+                    service, "Create Failure.txt", "body", "text/plain"
+                )
+            self.assertEqual(raised.exception.resp.status, 500)
+            copied = gdrive_cli.copy_file(
+                service, "doc-alpha", "Audited copy", "folder-a"
+            )
+            audit = json.loads(audit_path.read_text())
+            self.assertEqual(audit[-1]["file"]["id"], copied["id"])
+            self.assertEqual(audit[-1]["source"]["id"], "doc-alpha")
+            with self.assertRaises(Exception) as raised:
+                gdrive_cli.copy_file(
+                    service, "doc-alpha", "Copy Failure"
+                )
+            self.assertEqual(raised.exception.resp.status, 500)
 
     def test_http_failures_are_reproducible(self):
         for file_id, status in (("inaccessible", 403), ("missing", 404)):
