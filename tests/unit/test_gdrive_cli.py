@@ -1,4 +1,10 @@
 import unittest
+import sys
+from pathlib import Path
+
+GDRIVE_CLI_DIR = Path(__file__).resolve().parents[2] / "gdrive-cli"
+if str(GDRIVE_CLI_DIR) not in sys.path:
+    sys.path.insert(0, str(GDRIVE_CLI_DIR))
 
 import gdrive_cli
 

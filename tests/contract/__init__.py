@@ -1,0 +1,1 @@
+"""Hermetic MCP contract tests."""

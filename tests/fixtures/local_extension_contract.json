@@ -1,0 +1,32 @@
+{
+  "source": "Reviewed local-only Drive MCP extension",
+  "commonSchemas": {
+    "stringResult": {
+      "type": "object",
+      "properties": {
+        "result": {"type": "string"}
+      },
+      "required": ["result"]
+    }
+  },
+  "tools": {
+    "update_file": {
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "file_id": {"type": "string"},
+          "title": {
+            "anyOf": [{"type": "string"}, {"type": "null"}],
+            "default": null
+          },
+          "parent_id": {
+            "anyOf": [{"type": "string"}, {"type": "null"}],
+            "default": null
+          }
+        },
+        "required": ["file_id"]
+      },
+      "outputSchemaRef": "stringResult"
+    }
+  }
+}

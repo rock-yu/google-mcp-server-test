@@ -125,6 +125,43 @@ The server communicates over stdio and is normally launched by an MCP client
 
 ## Verify (smoke test)
 
+### Credential-free conformance suite
+
+From the repository root, run the same hermetic command used by CI:
+
+```bash
+drive-mcp-server/.venv/bin/python verify.py
+```
+
+It runs unit tests, launches this registered server over real stdio with a
+deterministic fake Drive backend, compares normalized `tools/list` schemas with
+reviewed fixtures, exercises all nine tools through `tools/call`, compiles Python
+sources, and strictly validates OpenSpec. It does not load OAuth files or access
+the network.
+
+The schema fixture covers all eight hosted counterparts; `update_file` is checked
+as a local extension. Semantic parity cases currently cover `search_files`,
+`list_recent_files`, and `get_file_metadata`. The registered
+`contentSnippet` omission described above remains the sole approved value-level
+deviation for those tools.
+
+Credentialed local and hosted checks are deliberately opt-in. Use only a
+dedicated test account with non-sensitive fixture data:
+
+```bash
+RUN_LIVE_DRIVE_TESTS=1 \
+  drive-mcp-server/.venv/bin/python -m unittest tests.live.test_live_drive -v
+
+RUN_HOSTED_MCP_TESTS=1 HOSTED_MCP_BEARER_TOKEN='...' \
+  drive-mcp-server/.venv/bin/python -m unittest tests.live.test_hosted_mcp -v
+```
+
+Run those commands from the repository root. Hosted drift capture and fixture
+review instructions are in the root [`README.md`](../README.md). Normal tests
+never update reviewed fixtures.
+
+### Credentialed smoke test
+
 From this directory, with your credential environment variables set, this lists
 the advertised tools over a real stdio MCP session:
 

@@ -1,0 +1,31 @@
+{
+  "deviations": [
+    {
+      "id": "host-generated-content-snippet",
+      "tool": "search_files",
+      "surface": "result.files",
+      "field": "contentSnippet",
+      "rationale": "Google's hosted MCP layer generates snippets unavailable from Drive API v3.",
+      "rule": "allow-missing-value",
+      "expires": null
+    },
+    {
+      "id": "host-generated-content-snippet-recent",
+      "tool": "list_recent_files",
+      "surface": "result.files",
+      "field": "contentSnippet",
+      "rationale": "Google's hosted MCP layer generates snippets unavailable from Drive API v3.",
+      "rule": "allow-missing-value",
+      "expires": null
+    },
+    {
+      "id": "host-generated-content-snippet-metadata",
+      "tool": "get_file_metadata",
+      "surface": "result",
+      "field": "contentSnippet",
+      "rationale": "Google's hosted MCP layer generates snippets unavailable from Drive API v3.",
+      "rule": "allow-missing-value",
+      "expires": null
+    }
+  ]
+}

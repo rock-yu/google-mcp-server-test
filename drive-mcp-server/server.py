@@ -54,6 +54,13 @@ _WRITE_REAUTH_MESSAGE = (
 )
 
 
+def configure_service(service, credentials) -> None:
+    """Install an already-created service and credentials before serving tools."""
+    global _service, _creds
+    _service = service
+    _creds = credentials
+
+
 class HostedFile(TypedDict):
     id: str
     title: str
@@ -374,10 +381,11 @@ def update_file(file_id: str, title: str | None = None, parent_id: str | None = 
     return f"Updated '{updated['name']}' (id: {updated['id']}; parents: {parents})"
 
 
-def main() -> None:
+def main(authenticate: bool = True) -> None:
     # Authenticate up front so missing credentials fail fast with a clear
     # message instead of on the first tool call.
-    _get_service()
+    if authenticate:
+        _get_service()
     mcp.run(transport="stdio")
 
 

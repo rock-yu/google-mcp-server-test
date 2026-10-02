@@ -1,0 +1,91 @@
+{
+  "search": [
+    {
+      "name": "title-contains-and-trashed-exclusion",
+      "query": "title contains 'Report'",
+      "ids": ["doc-alpha"]
+    },
+    {
+      "name": "title-equality",
+      "query": "title = 'Report Alpha'",
+      "ids": ["doc-alpha"]
+    },
+    {
+      "name": "full-text",
+      "query": "fullText contains 'architecture'",
+      "ids": ["doc-alpha"]
+    },
+    {
+      "name": "mime-type",
+      "query": "mimeType contains 'image/'",
+      "ids": ["image-beta"]
+    },
+    {
+      "name": "modified-time",
+      "query": "modifiedTime >= '2025-09-01T00:00:00Z'",
+      "ids": ["image-beta", "sheet-delta"]
+    },
+    {
+      "name": "modified-time-less-than-or-equal",
+      "query": "modifiedTime <= '2025-01-11T00:00:00Z'",
+      "ids": ["sparse-epsilon"]
+    },
+    {
+      "name": "created-time",
+      "query": "createdTime < '2025-02-01T00:00:00Z'",
+      "ids": ["folder-a", "sparse-epsilon"]
+    },
+    {
+      "name": "viewed-time",
+      "query": "viewedByMeTime > '2025-09-01T00:00:00Z'",
+      "ids": ["image-beta", "sheet-delta"]
+    },
+    {
+      "name": "parent",
+      "query": "parentId = 'folder-a'",
+      "ids": ["text-gamma"]
+    },
+    {
+      "name": "negative-parent",
+      "query": "parentId != 'root'",
+      "ids": ["text-gamma", "sparse-epsilon"]
+    },
+    {
+      "name": "owner",
+      "query": "owner = 'other@example.test'",
+      "ids": ["text-gamma"]
+    },
+    {
+      "name": "negative-owner",
+      "query": "owner != 'me'",
+      "ids": ["text-gamma"]
+    },
+    {
+      "name": "shared",
+      "query": "sharedWithMe = true",
+      "ids": ["image-beta", "text-gamma"]
+    },
+    {
+      "name": "negative-shared",
+      "query": "sharedWithMe != true",
+      "ids": ["doc-alpha", "folder-a", "sheet-delta", "sparse-epsilon"]
+    },
+    {
+      "name": "grouping-and-not",
+      "query": "(title contains 'Report' or title contains 'Budget') and not sharedWithMe = true",
+      "ids": ["doc-alpha", "sheet-delta"]
+    }
+  ],
+  "invalidSearch": [
+    "",
+    "unknown = 'x'",
+    "parentId contains 'root'",
+    "modifiedTime > 'yesterday'",
+    "title contains 'unterminated"
+  ],
+  "recent": {
+    "recency": ["sheet-delta", "image-beta", "doc-alpha", "text-gamma", "folder-a", "sparse-epsilon"],
+    "lastModified": ["sheet-delta", "image-beta", "doc-alpha", "text-gamma", "folder-a", "sparse-epsilon"],
+    "lastModifiedByMe": ["sheet-delta", "doc-alpha", "text-gamma", "folder-a", "image-beta", "sparse-epsilon"]
+  }
+}

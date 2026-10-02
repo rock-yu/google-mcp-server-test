@@ -1,0 +1,128 @@
+{
+  "files": [
+    {
+      "id": "folder-a",
+      "name": "Projects",
+      "parents": ["root"],
+      "mimeType": "application/vnd.google-apps.folder",
+      "createdTime": "2025-01-01T00:00:00Z",
+      "modifiedTime": "2025-06-01T00:00:00Z",
+      "viewedByMeTime": "2025-06-02T00:00:00Z",
+      "modifiedByMeTime": "2025-06-01T00:00:00Z",
+      "owners": [{"emailAddress": "me@example.test"}],
+      "capabilities": {"canAddChildren": true},
+      "webViewLink": "https://drive.test/folder-a",
+      "trashed": false,
+      "sharedWithMe": false
+    },
+    {
+      "id": "doc-alpha",
+      "name": "Report Alpha",
+      "parents": ["root"],
+      "mimeType": "application/vnd.google-apps.document",
+      "description": "Quarterly architecture report",
+      "createdTime": "2025-02-01T00:00:00Z",
+      "modifiedTime": "2025-08-03T00:00:00Z",
+      "viewedByMeTime": "2025-08-04T00:00:00Z",
+      "modifiedByMeTime": "2025-08-03T00:00:00Z",
+      "owners": [{"emailAddress": "me@example.test"}],
+      "capabilities": {"canAddChildren": false},
+      "webViewLink": "https://docs.test/doc-alpha",
+      "trashed": false,
+      "sharedWithMe": false,
+      "exportContent": "# Report Alpha\nArchitecture notes."
+    },
+    {
+      "id": "image-beta",
+      "name": "Diagram Beta.jpg",
+      "parents": ["root"],
+      "mimeType": "image/jpeg",
+      "size": "8",
+      "fileExtension": "jpg",
+      "createdTime": "2025-03-01T00:00:00Z",
+      "modifiedTime": "2025-09-01T00:00:00Z",
+      "viewedByMeTime": "2025-09-02T00:00:00Z",
+      "modifiedByMeTime": "2025-03-01T00:00:00Z",
+      "owners": [{"emailAddress": "me@example.test"}],
+      "capabilities": {"canAddChildren": false},
+      "webViewLink": "https://drive.test/image-beta",
+      "trashed": false,
+      "sharedWithMe": true,
+      "contentBase64": "SlBFR0RBVEE="
+    },
+    {
+      "id": "text-gamma",
+      "name": "Notes Gamma.txt",
+      "parents": ["folder-a"],
+      "mimeType": "text/plain",
+      "size": "11",
+      "fileExtension": "txt",
+      "createdTime": "2025-04-01T00:00:00Z",
+      "modifiedTime": "2025-07-01T00:00:00Z",
+      "viewedByMeTime": "2025-07-02T00:00:00Z",
+      "modifiedByMeTime": "2025-07-01T00:00:00Z",
+      "owners": [{"emailAddress": "other@example.test"}],
+      "capabilities": {"canAddChildren": false},
+      "webViewLink": "https://drive.test/text-gamma",
+      "trashed": false,
+      "sharedWithMe": true,
+      "content": "hello notes"
+    },
+    {
+      "id": "sheet-delta",
+      "name": "Budget Delta",
+      "parents": ["root"],
+      "mimeType": "application/vnd.google-apps.spreadsheet",
+      "createdTime": "2025-05-01T00:00:00Z",
+      "modifiedTime": "2025-10-01T00:00:00Z",
+      "viewedByMeTime": "2025-10-02T00:00:00Z",
+      "modifiedByMeTime": "2025-10-01T00:00:00Z",
+      "owners": [{"emailAddress": "me@example.test"}],
+      "capabilities": {"canAddChildren": false},
+      "webViewLink": "https://sheets.test/sheet-delta",
+      "trashed": false,
+      "sharedWithMe": false,
+      "exportContent": "item,amount\nhosting,42\n"
+    },
+    {
+      "id": "sparse-epsilon",
+      "name": "Sparse Epsilon",
+      "mimeType": "text/plain",
+      "createdTime": "2025-01-10T00:00:00Z",
+      "modifiedTime": "2025-01-11T00:00:00Z",
+      "modifiedByMeTime": "2025-01-11T00:00:00Z",
+      "owners": [{"emailAddress": "me@example.test"}],
+      "trashed": false,
+      "sharedWithMe": false,
+      "content": ""
+    },
+    {
+      "id": "trashed-zeta",
+      "name": "Report Trashed",
+      "parents": ["root"],
+      "mimeType": "text/plain",
+      "createdTime": "2025-06-01T00:00:00Z",
+      "modifiedTime": "2025-11-01T00:00:00Z",
+      "modifiedByMeTime": "2025-11-01T00:00:00Z",
+      "owners": [{"emailAddress": "me@example.test"}],
+      "trashed": true,
+      "sharedWithMe": false,
+      "content": "discarded report"
+    }
+  ],
+  "permissions": {
+    "doc-alpha": [
+      {
+        "id": "permission-owner",
+        "role": "owner",
+        "type": "user",
+        "emailAddress": "me@example.test",
+        "displayName": "Test Owner"
+      }
+    ]
+  },
+  "failures": {
+    "inaccessible": {"status": 403, "reason": "insufficientPermissions"},
+    "missing": {"status": 404, "reason": "notFound"}
+  }
+}

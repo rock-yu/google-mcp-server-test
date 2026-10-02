@@ -1,101 +1,93 @@
-# Google Drive MCP Server — Local Experiment
+# Local Google Drive MCP server
 
-This repo lets you experiment with connecting **GitHub Copilot in VS Code** directly to your
-**Google Drive** using the [Model Context Protocol (MCP)](https://modelcontextprotocol.io/).
+This repository contains a Python stdio MCP server modeled on Google's hosted
+Drive MCP endpoint. It exposes the hosted server's eight tools plus the local-only
+`update_file` metadata extension. See
+[`drive-mcp-server/README.md`](drive-mcp-server/README.md) for tool contracts,
+OAuth setup, and VS Code integration.
 
-Once set up, you can ask Copilot things like:
-- *"Search my Google Drive for architecture documents"*
-- *"Read the contents of my meeting notes doc"*
-- *"What's in the spreadsheet called Q1 Budget?"*
+## Credential-free verification
 
-→ **To get started, follow [SETUP-GUIDE.md](./SETUP-GUIDE.md)**
+Create the server virtual environment and install the pinned dependencies:
 
----
-
-## ⚠️ This is a locally-hosted MCP server — not a cloud-hosted one
-
-| | **This setup (local)** | **Cloud-hosted MCP** |
-|---|---|---|
-| **Where it runs** | On your machine, spawned by VS Code | On a remote server (container, cloud function) |
-| **Who starts it** | VS Code starts/stops it automatically | Always-on, accessed over HTTP/SSE |
-| **Credentials** | Stored locally on your machine | Managed by the hosting environment |
-| **Network** | stdin/stdout — no open port | Exposed via HTTPS endpoint |
-| **Good for** | Local experimentation, personal use | Shared teams, production integrations |
-
-**For this experiment:** your credentials never leave your machine. This is the simplest way to
-explore MCP before committing to a hosted deployment.
-
-> If you later want to share this with a team, move the server to a hosted environment and switch
-> from `stdio` transport to `http`/`sse` in `.vscode/mcp.json`.
->
-> → **Production roadmap:** [PRODUCTION-PLAN.md](./PRODUCTION-PLAN.md) — phases, milestones, and exit criteria.
-
----
-
-## How it works
-
-```
-VS Code (Copilot Chat)
-       │
-       │  MCP protocol (stdio)
-       ▼
-@modelcontextprotocol/server-gdrive   ← local Node.js process
-       │
-       │  Google Drive API (OAuth 2.0)
-       ▼
-  Your Google Drive
+```bash
+python -m venv drive-mcp-server/.venv
+drive-mcp-server/.venv/bin/python -m pip install \
+  -r drive-mcp-server/requirements.txt
+drive-mcp-server/.venv/bin/python verify.py
 ```
 
-VS Code reads `.vscode/mcp.json` and spawns the MCP server as a background Node.js process when
-you open this folder. Copilot Chat (in Agent mode) can then call its tools to search and read
-files from your Drive.
+`verify.py` is the canonical local and CI command. It runs:
 
----
+1. Standard-library unit tests.
+2. Hermetic contract tests against the real MCP server over stdio.
+3. Python compile checks.
+4. Strict validation of every OpenSpec change and specification.
 
-## Credentials
+No Google OAuth files, Drive account, hosted MCP credential, or external network
+access is needed. The test server injects a deterministic fake at the
+`googleapiclient` boundary and denies OAuth/network fallback.
 
-The setup uses two separate credential files. Both stay on your machine and are gitignored.
+## What conformance means
 
-| File | Purpose | Where it comes from |
-|------|---------|---------------------|
-| **`gcp-oauth.keys.json`** (project root) | **OAuth client config** — identifies your app to Google (client ID, client secret, redirect URIs). Used only to start the browser login flow; it does not grant Drive access by itself. | **Google Cloud Console** — create an OAuth client ID (Desktop app), download the JSON, rename to `gcp-oauth.keys.json`, and place in the project root. See [SETUP-GUIDE.md](./SETUP-GUIDE.md) Step 2d. |
-| **`node_modules/.gdrive-server-credentials.json`** | **Your user OAuth tokens** — access token, refresh token, scope, and expiry. The MCP server loads this on startup to call the Drive API on your behalf (read-only: `drive.readonly`). | **Created locally** when you run the one-time auth command in Step 3. After you sign in and click Allow in the browser, the server writes `auth.credentials` to this path (terminal message: *"Credentials saved. You can now run the server."*). Path is set by `GDRIVE_CREDENTIALS_PATH` in `.vscode/mcp.json` / `.cursor/mcp.json`. |
+The harness checks all nine local tools across the MCP protocol boundary. It
+compares the eight hosted counterparts with the reviewed normalized contract in
+[`tests/fixtures/hosted_tools_contract.json`](tests/fixtures/hosted_tools_contract.json);
+`update_file` has a separate local-extension fixture. Semantic parity cases cover
+`search_files`, `list_recent_files`, and `get_file_metadata`.
 
-In short: **`gcp-oauth.keys.json`** is the app’s identity from Google Cloud; **`.gdrive-server-credentials.json`** is your personal session after you consent. You need both — the keys file for auth, the credentials file for every server run.
+Conformance is intentionally scoped: the other five hosted counterparts receive
+schema and regression coverage but do not claim full response-semantic parity.
+Google's hosted layer generates `contentSnippet`, while Drive API v3 does not
+expose an equivalent. Its absent local value is the only approved read-tool
+deviation and is registered narrowly in
+[`tests/fixtures/deviations.json`](tests/fixtures/deviations.json).
 
-> 🔒 Never commit either file. They are listed in `.gitignore`.
+## Opt-in live checks
 
----
+Live checks are excluded from normal verification and should use a dedicated test
+account containing no personal or production data.
 
-## What the MCP server can do
+```bash
+# Local Drive API smoke test; uses the normal GDRIVE_* credential paths.
+RUN_LIVE_DRIVE_TESTS=1 \
+  drive-mcp-server/.venv/bin/python -m unittest \
+  tests.live.test_live_drive -v
 
-| Capability | Output format |
-|------------|---------------|
-| Search files by name/content | File names + MIME types |
-| Read Google Docs | Markdown |
-| Read Google Sheets | CSV |
-| Read Google Slides | Plain text |
-| Read Google Drawings | PNG |
-| Read other files | Native format |
-
----
-
-## Project structure
-
-```
-google-mcp-server-test/
-├── .vscode/
-│   └── mcp.json                            ← VS Code MCP server config
-├── node_modules/
-│   └── .gdrive-server-credentials.json    ← user OAuth tokens (see Credentials)
-├── .gitignore
-├── gcp-oauth.keys.json                     ← OAuth client config (see Credentials)
-├── package.json
-├── README.md                               ← this file
-├── SETUP-GUIDE.md                          ← step-by-step setup instructions
-├── PRODUCTION-PLAN.md                      ← cloud hosting roadmap
-└── gdrive-cli/
-    ├── README.md                           ← standalone Drive CLI (Python)
-    └── gdrive_cli.py
+# Hosted tools/list smoke test.
+RUN_HOSTED_MCP_TESTS=1 \
+HOSTED_MCP_BEARER_TOKEN='...' \
+  drive-mcp-server/.venv/bin/python -m unittest \
+  tests.live.test_hosted_mcp -v
 ```
 
+To create a review candidate when the hosted schema may have drifted:
+
+```bash
+HOSTED_MCP_BEARER_TOKEN='...' \
+  drive-mcp-server/.venv/bin/python -m tests.live.capture_hosted_contract \
+  --output /tmp/hosted-drive-contract-candidate.json
+```
+
+The capture command redacts recognized credential fields, writes only to the
+caller-selected path, prints a normalized diff, and refuses to overwrite the
+curated fixture. Review the hosted documentation and diff before manually
+updating the fixture or deviations registry. Never commit tokens, captured
+private metadata, or unreviewed snapshots.
+
+## Repository layout
+
+```text
+drive-mcp-server/   Python MCP server and pinned runtime dependencies
+gdrive-cli/         Shared OAuth and Drive API helpers
+tests/unit/         Pure helper, fake backend, and normalizer tests
+tests/contract/     Real stdio MCP schema and semantic tests
+tests/live/         Explicitly enabled credentialed observations
+tests/support/      Fake Drive, MCP session, and contract utilities
+tests/fixtures/     Reviewed contracts, deviations, and semantic data
+openspec/           Runtime specification and change history
+verify.py           Canonical credential-free verification entrypoint
+```
+
+For OAuth provisioning, follow [`SETUP-GUIDE.md`](SETUP-GUIDE.md). OAuth client
+keys and user tokens remain local and are ignored by Git.

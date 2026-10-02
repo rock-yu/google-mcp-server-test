@@ -1,0 +1,175 @@
+{
+  "source": "Reviewed Google Drive MCP tools/list contract",
+  "commonSchemas": {
+    "stringResult": {
+      "type": "object",
+      "properties": {
+        "result": {"type": "string"}
+      },
+      "required": ["result"]
+    },
+    "hostedFile": {
+      "type": "object",
+      "properties": {
+        "id": {"type": "string"},
+        "title": {"type": "string"},
+        "parentId": {"type": "string"},
+        "mimeType": {"type": "string"},
+        "fileSize": {"type": "string"},
+        "description": {"type": "string"},
+        "fileExtension": {"type": "string"},
+        "contentSnippet": {"type": "string"},
+        "viewUrl": {"type": "string"},
+        "sharedWithMeTime": {"type": "string"},
+        "createdTime": {"type": "string"},
+        "modifiedTime": {"type": "string"},
+        "viewedByMeTime": {"type": "string"},
+        "owner": {"type": "string"},
+        "canAddChildren": {"type": "boolean"}
+      },
+      "required": ["id", "title"]
+    },
+    "hostedFilePage": {
+      "type": "object",
+      "$defs": {
+        "HostedFile": {
+          "type": "object",
+          "properties": {
+            "id": {"type": "string"},
+            "title": {"type": "string"},
+            "parentId": {"type": "string"},
+            "mimeType": {"type": "string"},
+            "fileSize": {"type": "string"},
+            "description": {"type": "string"},
+            "fileExtension": {"type": "string"},
+            "contentSnippet": {"type": "string"},
+            "viewUrl": {"type": "string"},
+            "sharedWithMeTime": {"type": "string"},
+            "createdTime": {"type": "string"},
+            "modifiedTime": {"type": "string"},
+            "viewedByMeTime": {"type": "string"},
+            "owner": {"type": "string"},
+            "canAddChildren": {"type": "boolean"}
+          },
+          "required": ["id", "title"]
+        }
+      },
+      "properties": {
+        "files": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/HostedFile"}
+        },
+        "nextPageToken": {"type": "string"}
+      },
+      "required": ["files"]
+    }
+  },
+  "tools": {
+    "search_files": {
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "query": {"type": "string"},
+          "pageSize": {"type": "integer", "default": 10},
+          "pageToken": {
+            "anyOf": [{"type": "string"}, {"type": "null"}],
+            "default": null
+          },
+          "excludeContentSnippets": {"type": "boolean", "default": false}
+        },
+        "required": ["query"]
+      },
+      "outputSchemaRef": "hostedFilePage"
+    },
+    "read_file_content": {
+      "inputSchema": {
+        "type": "object",
+        "properties": {"file_id": {"type": "string"}},
+        "required": ["file_id"]
+      },
+      "outputSchemaRef": "stringResult"
+    },
+    "list_recent_files": {
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "orderBy": {"type": "string", "default": "recency"},
+          "pageSize": {"type": "integer", "default": 10},
+          "pageToken": {
+            "anyOf": [{"type": "string"}, {"type": "null"}],
+            "default": null
+          },
+          "excludeContentSnippets": {"type": "boolean", "default": false}
+        }
+      },
+      "outputSchemaRef": "hostedFilePage"
+    },
+    "get_file_metadata": {
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "fileId": {"type": "string"},
+          "excludeContentSnippets": {"type": "boolean", "default": false}
+        },
+        "required": ["fileId"]
+      },
+      "outputSchemaRef": "hostedFile"
+    },
+    "download_file_content": {
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "file_id": {"type": "string"},
+          "output_path": {
+            "anyOf": [{"type": "string"}, {"type": "null"}],
+            "default": null
+          }
+        },
+        "required": ["file_id"]
+      },
+      "outputSchemaRef": "stringResult"
+    },
+    "create_file": {
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "name": {"type": "string"},
+          "content": {"type": "string"},
+          "mime_type": {"type": "string", "default": "text/plain"},
+          "parent_id": {
+            "anyOf": [{"type": "string"}, {"type": "null"}],
+            "default": null
+          }
+        },
+        "required": ["name", "content"]
+      },
+      "outputSchemaRef": "stringResult"
+    },
+    "copy_file": {
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "file_id": {"type": "string"},
+          "name": {
+            "anyOf": [{"type": "string"}, {"type": "null"}],
+            "default": null
+          },
+          "parent_id": {
+            "anyOf": [{"type": "string"}, {"type": "null"}],
+            "default": null
+          }
+        },
+        "required": ["file_id"]
+      },
+      "outputSchemaRef": "stringResult"
+    },
+    "get_file_permissions": {
+      "inputSchema": {
+        "type": "object",
+        "properties": {"file_id": {"type": "string"}},
+        "required": ["file_id"]
+      },
+      "outputSchemaRef": "stringResult"
+    }
+  }
+}
