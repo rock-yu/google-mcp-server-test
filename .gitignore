@@ -14,3 +14,7 @@ package-lock.json
 gdrive-cli/.venv/
 gdrive-cli/__pycache__/
 *.pyc
+
+# drive-mcp-server (Python)
+drive-mcp-server/.venv/
+drive-mcp-server/__pycache__/

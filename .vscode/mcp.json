@@ -11,6 +11,18 @@
         "GDRIVE_OAUTH_PATH": "${workspaceFolder}/gcp-oauth.keys.json",
         "GDRIVE_CREDENTIALS_PATH": "${workspaceFolder}/node_modules/.gdrive-server-credentials.json"
       }
+    },
+    "drive-mcp": {
+      "type": "stdio",
+      "command": "${workspaceFolder}/drive-mcp-server/.venv/bin/python",
+      "args": [
+        "${workspaceFolder}/drive-mcp-server/server.py"
+      ],
+      "env": {
+        "NODE_TLS_REJECT_UNAUTHORIZED": "0",
+        "GDRIVE_OAUTH_PATH": "${workspaceFolder}/gcp-oauth.keys.json",
+        "GDRIVE_CREDENTIALS_PATH": "${workspaceFolder}/node_modules/.gdrive-server-credentials.json"
+      }
     }
   }
 }
